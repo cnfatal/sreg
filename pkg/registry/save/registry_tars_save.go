@@ -17,12 +17,12 @@ package save
 import (
 	"context"
 	"fmt"
-	"github.com/containers/image/v5/transports/alltransports"
 	"strings"
 	stdsync "sync"
 	"time"
 
 	"github.com/containers/image/v5/copy"
+	"github.com/containers/image/v5/transports/alltransports"
 	itype "github.com/containers/image/v5/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
@@ -34,18 +34,28 @@ import (
 )
 
 func NewImageTarSaver(ctx context.Context, maxPullProcs int) Registry {
+	return newTarRegistrySaver(ctx, maxPullProcs, copy.CopySystemImage)
+}
+
+func NewAllImageTarSaver(ctx context.Context, maxPullProcs int) Registry {
+	return newTarRegistrySaver(ctx, maxPullProcs, copy.CopyAllImages)
+}
+
+func newTarRegistrySaver(ctx context.Context, maxPullProcs int, imageListSelection copy.ImageListSelection) Registry {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	return &tmpTarRegistryImage{
-		ctx:          ctx,
-		maxPullProcs: maxPullProcs,
+		ctx:                ctx,
+		maxPullProcs:       maxPullProcs,
+		imageListSelection: imageListSelection,
 	}
 }
 
 type tmpTarRegistryImage struct {
-	ctx          context.Context
-	maxPullProcs int
+	ctx                context.Context
+	maxPullProcs       int
+	imageListSelection copy.ImageListSelection
 }
 
 func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform v1.Platform) ([]string, error) {
@@ -95,7 +105,7 @@ func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform 
 			if err != nil {
 				return fmt.Errorf("invalid source name %s: %v", allImage[0], err)
 			}
-			err = sync.ArchiveToImage(is.ctx, sys, srcRef, fmt.Sprintf("%s/%s", ep, allImage[1]), copy.CopySystemImage)
+			err = sync.ArchiveToImage(is.ctx, sys, srcRef, fmt.Sprintf("%s/%s", ep, allImage[1]), is.imageListSelection)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
 			}

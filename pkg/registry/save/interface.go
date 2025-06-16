@@ -21,6 +21,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"github.com/containers/image/v5/copy"
 	"github.com/docker/docker/pkg/progress"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -40,16 +41,21 @@ type defaultImage struct {
 }
 
 type tmpRegistryImage struct {
-	ctx          context.Context
-	maxPullProcs int
-	auths        map[string]types.AuthConfig
+	ctx                context.Context
+	maxPullProcs       int
+	auths              map[string]types.AuthConfig
+	imageListSelection copy.ImageListSelection
 }
 
 func NewImageSaver(ctx context.Context, maxPullProcs int, auths map[string]types.AuthConfig) Registry {
-	return newTmpRegistrySaver(ctx, maxPullProcs, auths)
+	return newTmpRegistrySaver(ctx, maxPullProcs, copy.CopySystemImage, auths)
 }
 
-func newTmpRegistrySaver(ctx context.Context, maxPullProcs int, auths map[string]types.AuthConfig) Registry {
+func NewAllImageSaver(ctx context.Context, maxPullProcs int, auths map[string]types.AuthConfig) Registry {
+	return newTmpRegistrySaver(ctx, maxPullProcs, copy.CopyAllImages, auths)
+}
+
+func newTmpRegistrySaver(ctx context.Context, maxPullProcs int, imageListSelection copy.ImageListSelection, auths map[string]types.AuthConfig) Registry {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -57,8 +63,9 @@ func newTmpRegistrySaver(ctx context.Context, maxPullProcs int, auths map[string
 		auths = make(map[string]types.AuthConfig)
 	}
 	return &tmpRegistryImage{
-		ctx:          ctx,
-		maxPullProcs: maxPullProcs,
-		auths:        auths,
+		ctx:                ctx,
+		maxPullProcs:       maxPullProcs,
+		auths:              auths,
+		imageListSelection: imageListSelection,
 	}
 }
