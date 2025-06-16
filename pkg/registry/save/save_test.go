@@ -30,7 +30,7 @@ func TestSaveTmpImages(t *testing.T) {
 	}()
 	t.Setenv("DOCKER_CONFIG", "/Users/cuisongliu/.docker")
 	authConfigs, _ := crane.GetAuthInfo(nil)
-	save := newTmpRegistrySaver(context.TODO(), 5, authConfigs)
+	save := NewImageSaver(context.TODO(), 5, authConfigs)
 	t.Run("no credentials found", func(t *testing.T) {
 		_ = os.Mkdir("testdata/registry", 0755)
 		imgs, err := save.SaveImages([]string{"nginx"}, "testdata/registry", v1.Platform{
